@@ -79,6 +79,29 @@
     }
 
     /* Title */
+    .sidebar-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #sidebar-close {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      color: #aaa;
+      cursor: pointer;
+      padding: 2px 4px;
+      line-height: 1;
+    }
+
+    #sidebar-close:hover { color: #000; }
+
+    @media (max-width: 640px) {
+      #sidebar-close { display: block; }
+    }
+
     .sidebar-title h1 {
       font-size: 1.3rem;
       font-weight: 800;
@@ -533,7 +556,10 @@
   <div id="sidebar-inner">
 
     <div class="sidebar-title">
-      <h1>🐟 Scrapp</h1>
+      <div class="sidebar-title-row">
+        <h1>🐟 Scrapp</h1>
+        <button id="sidebar-close" aria-label="Close menu">✕</button>
+      </div>
       <p>Community map of fish &amp; chip shops that serve scraps</p>
     </div>
 
@@ -1015,20 +1041,35 @@
   modalLocationInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchOSM(); });
 
   // ── Mobile sidebar toggle ────────────────────────────────────────────────────
-  const sidebar  = document.getElementById('sidebar');
-  const menuBtn  = document.getElementById('menu-btn');
-  const backdrop = document.getElementById('sidebar-backdrop');
+  const sidebar      = document.getElementById('sidebar');
+  const menuBtn      = document.getElementById('menu-btn');
+  const sidebarClose = document.getElementById('sidebar-close');
+  const backdrop     = document.getElementById('sidebar-backdrop');
 
-  function openSidebar()  { sidebar.classList.add('open'); backdrop.classList.add('visible'); }
-  function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('visible'); }
+  function openSidebar() {
+    sidebar.classList.add('open');
+    backdrop.classList.add('visible');
+    menuBtn.style.display = 'none';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    backdrop.classList.remove('visible');
+    menuBtn.style.display = '';
+  }
 
-  menuBtn.addEventListener('click', () => {
-    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
-  });
+  menuBtn.addEventListener('click', openSidebar);
+  sidebarClose.addEventListener('click', closeSidebar);
   backdrop.addEventListener('click', closeSidebar);
 
   // Close sidebar after selecting a place (event delegation on results container)
   searchResults.addEventListener('click', closeSidebar);
+
+  // ── First-visit welcome: open sidebar on mobile ──────────────────────────────
+  const VISITED_KEY = 'scrapp-visited';
+  if (!localStorage.getItem(VISITED_KEY) && window.innerWidth <= 640) {
+    openSidebar();
+  }
+  localStorage.setItem(VISITED_KEY, '1');
 
 </script>
 </body>
