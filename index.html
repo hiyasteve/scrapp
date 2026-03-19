@@ -791,6 +791,7 @@
 
   async function fetchShops() {
     if (inflight) return;
+    if (map.getZoom() < LOW_ZOOM) { applyFilters(); return; }
     const b = map.getBounds();
     const s = b.getSouth(), w = b.getWest(), n = b.getNorth(), e = b.getEast();
 
