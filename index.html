@@ -850,7 +850,8 @@
 
   // ── Filters ──────────────────────────────────────────────────────────────────
   const activeFilters = new Set(['yes', 'no', 'unconfirmed', 'community']);
-  const LOW_ZOOM = 6;
+  const LOW_ZOOM = 6;   // below this: tiny dot mode, no Overpass
+  const MID_ZOOM = 12;  // below this: hide unconfirmed markers
   const zoomDots = {};
 
   function makeTinyDot(status) {
@@ -880,7 +881,8 @@
         if (map.hasLayer(marker)) map.removeLayer(marker);
       } else {
         const key = markerFilterKey(id);
-        const visible = activeFilters.has(key);
+        const hiddenByZoom = map.getZoom() < MID_ZOOM && key === 'unconfirmed';
+        const visible = activeFilters.has(key) && !hiddenByZoom;
         if (visible  && !map.hasLayer(marker)) marker.addTo(map);
         if (!visible &&  map.hasLayer(marker)) map.removeLayer(marker);
       }
