@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrapp</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #000;
+      color: #fff;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+    #sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      overflow-y: auto;
+    }
+
+    #sidebar-inner {
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      flex: 1;
+    }
+
+    /* Title */
+    .sidebar-title h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #000;
+    }
+
+    .sidebar-title p {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* Divider */
+    .sidebar-divider {
+      height: 1px;
+      background: #ebebeb;
+    }
+
+    /* Section label */
+    .sidebar-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+
+    /* Search */
+    #search-wrap { display: flex; flex-direction: column; gap: 6px; }
+
+    #search-row { display: flex; gap: 0; }
+
+    #search-input {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-right: none;
+      border-radius: 4px 0 0 4px;
+      color: #000;
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #search-input:focus { border-color: #999; }
+    #search-input::placeholder { color: #ccc; }
+
+    #search-btn {
+      background: #000;
+      border: 1px solid #000;
+      border-radius: 0 4px 4px 0;
+      color: #fff;
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #search-btn:hover { background: #333; }
+
+    #search-results {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    #search-results.visible { display: flex; }
+
+    .search-result-item {
+      padding: 7px 10px;
+      font-size: 0.78rem;
+      color: #555;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      line-height: 1.3;
+      transition: background 0.1s;
+    }
+
+    .search-result-item:last-child { border-bottom: none; }
+    .search-result-item:hover { background: #f5f5f5; color: #000; }
+
+    .search-result-item .result-type {
+      font-size: 0.68rem;
+      color: #bbb;
+      margin-top: 2px;
+    }
+
+    /* Add shop button */
+    #add-shop-btn {
+      background: #000;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      padding: 9px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
+      width: 100%;
+    }
+
+    #add-shop-btn:hover { background: #333; }
+
+    /* Legend / filters */
+    #legend { display: flex; flex-direction: column; gap: 5px; }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: #666;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      user-select: none;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    .legend-item:hover { background: #f5f5f5; }
+
+    .legend-item.filter-off {
+      opacity: 0.35;
+    }
+
+    .legend-dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-green     { background: #2e9e4f; }
+    .dot-grey      { background: #bbb; }
+    .dot-orange    { background: #e07b00; }
+    .dot-red       { background: #d63c3c; }
+
+    /* Loading */
+    #loading {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 999;
+      background: #fff;
+      color: #000;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #loading.visible { display: flex; }
+
+    .spinner {
+      width: 12px; height: 12px;
+      border: 2px solid #ddd;
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Map */
+    #map {
+      flex: 1;
+      height: 100vh;
+    }
+
+    /* Popup */
+    .leaflet-popup-content-wrapper {
+      background: #fff;
+      color: #000;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+
+    .leaflet-popup-tip { background: #fff; }
+
+    .popup-inner { min-width: 180px; }
+
+    .popup-inner h3 {
+      font-size: 0.95rem;
+      color: #000;
+      margin-bottom: 4px;
+    }
+
+    .popup-inner .community-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      background: transparent;
+      border: 1px solid #ddd;
+      color: #999;
+      border-radius: 3px;
+      padding: 1px 5px;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .popup-inner .address {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .popup-inner .updated {
+      font-size: 0.68rem;
+      color: #bbb;
+      margin-bottom: 10px;
+    }
+
+    .scraps-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .scraps-btn {
+      flex: 1;
+      padding: 7px 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: transparent;
+      color: #888;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .scraps-btn:hover { border-color: #999; color: #000; }
+
+    .scraps-btn.active-yes {
+      border-color: #2e9e4f;
+      color: #2e9e4f;
+      background: rgba(46,158,79,0.07);
+      font-weight: 600;
+    }
+
+    .scraps-btn.active-yes:hover { background: rgba(46,158,79,0.14); }
+
+    .scraps-btn.active-no {
+      border-color: #d63c3c;
+      color: #d63c3c;
+      background: rgba(214,60,60,0.07);
+      font-weight: 600;
+    }
+
+    .scraps-btn.active-no:hover { background: rgba(214,60,60,0.14); }
+
+    .delete-btn {
+      display: block;
+      width: 100%;
+      margin-top: 5px;
+      padding: 5px 10px;
+      border: 1px solid #f0f0f0;
+      border-radius: 4px;
+      background: transparent;
+      color: #ccc;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+
+    .delete-btn:hover { border-color: #ddd; color: #999; }
+
+    /* ── Modal ───────────────────────────────────────────────────────────────── */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #modal-overlay.visible { display: flex; }
+
+    #modal {
+      background: #0a0a0a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 24px;
+      width: 360px;
+      max-width: 95vw;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    }
+
+    #modal h2 {
+      font-size: 1rem;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    #modal .modal-sub {
+      font-size: 0.75rem;
+      color: #555;
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+
+    #modal-search-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    #modal-search-input {
+      flex: 1;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      color: #fff;
+      padding: 7px 10px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #modal-search-input:focus { border-color: #555; }
+    #modal-search-input::placeholder { color: #333; }
+
+    #modal-search-btn {
+      background: #fff;
+      border: 1px solid #fff;
+      border-radius: 4px;
+      color: #000;
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    #modal-search-btn:hover { background: #ddd; }
+    #modal-search-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #modal-results {
+      display: none;
+      flex-direction: column;
+      border: 1px solid #222;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    #modal-results.visible { display: flex; }
+
+    .modal-result-item {
+      padding: 9px 12px;
+      font-size: 0.8rem;
+      color: #aaa;
+      cursor: pointer;
+      border-bottom: 1px solid #111;
+      line-height: 1.3;
+      transition: background 0.1s;
+    }
+
+    .modal-result-item:last-child { border-bottom: none; }
+    .modal-result-item:hover { background: #111; }
+
+    .modal-result-item strong {
+      display: block;
+      color: #eee;
+      font-size: 0.85rem;
+      margin-bottom: 2px;
+    }
+
+    .modal-result-item .result-addr { color: #555; font-size: 0.72rem; }
+
+    .modal-result-item .result-osm-type {
+      display: inline-block;
+      font-size: 0.62rem;
+      border: 1px solid #222;
+      border-radius: 3px;
+      padding: 1px 4px;
+      color: #444;
+      margin-top: 3px;
+    }
+
+    #modal-error {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 8px;
+      min-height: 16px;
+    }
+
+    #modal-cancel {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid #2a2a2a;
+      color: #555;
+      transition: all 0.15s;
+    }
+
+    #modal-cancel:hover { border-color: #555; color: #aaa; }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────────── -->
+<div id="sidebar">
+  <div id="sidebar-inner">
+
+    <div class="sidebar-title">
+      <h1>🐟 Scrapp</h1>
+      <p>Community map of fish &amp; chip shops that serve scraps</p>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div>
+      <div class="sidebar-label">Zoom to your plaice</div>
+      <div id="search-wrap">
+        <div id="search-row">
+          <input id="search-input" type="text" placeholder="Town, city, postcode…" autocomplete="off" />
+          <button id="search-btn">→</button>
+        </div>
+        <div id="search-results"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div>
+      <div class="sidebar-label">Missing a shop?</div>
+      <button id="add-shop-btn">+ Add missing shop</button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div>
+      <div class="sidebar-label">Legend</div>
+      <div id="legend">
+        <div class="legend-item" data-filter="yes"><div class="legend-dot dot-green"></div>Serves scraps ✓</div>
+        <div class="legend-item" data-filter="no"><div class="legend-dot dot-red"></div>No scraps ✗</div>
+        <div class="legend-item" data-filter="unconfirmed"><div class="legend-dot dot-grey"></div>Unconfirmed</div>
+        <div class="legend-item" data-filter="community"><div class="legend-dot dot-orange"></div>Community added</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Map ─────────────────────────────────────────────────────────────────── -->
+<div id="map"></div>
+
+<div id="loading"><div class="spinner"></div> Loading…</div>
+
+<!-- ── Add shop modal ───────────────────────────────────────────────────────── -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>Add a missing shop</h2>
+    <p class="modal-sub">Search OpenStreetMap for any business — even if it's not tagged as a fish &amp; chip shop — then add it to your map.</p>
+    <div id="modal-search-row">
+      <input id="modal-search-input" type="text" placeholder="e.g. steels, golden fry…" autocomplete="off" />
+      <button id="modal-search-btn">Search</button>
+    </div>
+    <div id="modal-results"></div>
+    <div id="modal-error"></div>
+    <button id="modal-cancel">Cancel</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // ── Map ─────────────────────────────────────────────────────────────────────
+  const map = L.map('map').setView([53.483, -2.244], 13);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // ── Icons ───────────────────────────────────────────────────────────────────
+  // scrapsStatus: 'yes' | 'no' | null
+  function makeIcon(scrapsStatus, community = false) {
+    let bg, border, inner = '';
+    if (scrapsStatus === 'yes') {
+      bg = '#2e9e4f'; border = '#1e7a3a';
+    } else if (scrapsStatus === 'no') {
+      bg = '#d63c3c'; border = '#a82828';
+    } else if (community) {
+      bg = '#e07b00'; border = '#b86200';
+      inner = `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;line-height:1">+</span>`;
+    } else {
+      bg = '#bbb'; border = '#999';
+    }
+    return L.divIcon({
+      className: '',
+      html: `<div style="width:12px;height:12px;border-radius:50%;background:${bg};border:2px solid ${border};box-shadow:0 1px 4px rgba(0,0,0,0.3);position:relative;">${inner}</div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+      popupAnchor: [0, -8],
+    });
+  }
+
+  // ── Storage ─────────────────────────────────────────────────────────────────
+  const STORAGE_KEY = 'scraps-map-v1';
+  const CUSTOM_KEY  = 'scraps-map-custom-v1';
+  let scrapsData = {}, customShops = {};
+
+  function loadStorage() {
+    try { scrapsData  = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { scrapsData = {}; }
+    try { customShops = JSON.parse(localStorage.getItem(CUSTOM_KEY)  || '{}'); } catch { customShops = {}; }
+  }
+
+  function saveStorage()     { localStorage.setItem(STORAGE_KEY, JSON.stringify(scrapsData)); }
+  function saveCustomShops() { localStorage.setItem(CUSTOM_KEY,  JSON.stringify(customShops)); }
+
+  // scrapsData[id] is { v: 'yes'|'no', t: timestamp } or null/missing
+  // Handles legacy string values gracefully
+  function scrapsStatus(id) {
+    const d = scrapsData[id];
+    if (!d) return null;
+    return typeof d === 'object' ? d.v : d;
+  }
+  function scrapsTimestamp(id) {
+    const d = scrapsData[id];
+    if (!d || typeof d !== 'object') return null;
+    return d.t;
+  }
+
+  loadStorage();
+
+  // ── Markers ─────────────────────────────────────────────────────────────────
+  const markers  = {};
+  const shopData = {};
+
+  function buildAddress(tags) {
+    const parts = [
+      tags['addr:housenumber'] && tags['addr:street']
+        ? `${tags['addr:housenumber']} ${tags['addr:street']}`
+        : tags['addr:street'],
+      tags['addr:city'],
+      tags['addr:postcode'],
+    ].filter(Boolean);
+    return parts.join(', ') || 'Address unknown';
+  }
+
+  function formatDate(ts) {
+    if (!ts) return null;
+    return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function buildPopup(id) {
+    const shop      = shopData[id];
+    const status    = scrapsStatus(id);
+    const ts        = scrapsTimestamp(id);
+    const community = !!shop.community;
+    const updatedLine = ts ? `<div class="updated">Last updated: ${formatDate(ts)}</div>` : '';
+    return `
+      <div class="popup-inner">
+        <h3>${shop.name}</h3>
+        ${community ? '<div class="community-badge">Community added</div>' : ''}
+        <div class="address">${shop.address}</div>
+        ${updatedLine}
+        <div class="scraps-btns">
+          <button class="scraps-btn ${status === 'yes' ? 'active-yes' : ''}" onclick="setScraps('${id}', 'yes')">✓ Serves scraps</button>
+          <button class="scraps-btn ${status === 'no'  ? 'active-no'  : ''}" onclick="setScraps('${id}', 'no')">✗ No scraps</button>
+        </div>
+        ${community ? `<button class="delete-btn" onclick="deleteCustomShop('${id}')">Remove this shop</button>` : ''}
+      </div>`;
+  }
+
+  function placeMarker(id, lat, lon, name, address, community = false) {
+    shopData[id] = { name, address, community };
+    if (markers[id]) {
+      markers[id].setIcon(makeIcon(scrapsStatus(id), community));
+      if (markers[id].isPopupOpen()) markers[id].setPopupContent(buildPopup(id));
+      return;
+    }
+    const m = L.marker([lat, lon], { icon: makeIcon(scrapsStatus(id), community) })
+      .addTo(map).bindPopup(buildPopup(id));
+    markers[id] = m;
+  }
+
+  function addOrUpdateMarker(id, lat, lon, tags) {
+    placeMarker(id, lat, lon, tags.name || 'Unnamed chip shop', buildAddress(tags), false);
+  }
+
+  // Clicking an already-active button resets to unconfirmed
+  window.setScraps = function(id, value) {
+    if (scrapsStatus(id) === value) {
+      delete scrapsData[id];
+    } else {
+      scrapsData[id] = { v: value, t: Date.now() };
+    }
+    saveStorage();
+    const community = !!(shopData[id] && shopData[id].community);
+    if (markers[id]) {
+      markers[id].setIcon(makeIcon(scrapsStatus(id), community));
+      markers[id].setPopupContent(buildPopup(id));
+      applyFilters();
+    }
+  };
+
+  window.deleteCustomShop = function(id) {
+    if (!confirm('Remove this community-added shop?')) return;
+    delete customShops[id]; saveCustomShops();
+    delete shopData[id];
+    delete scrapsData[id];  saveStorage();
+    if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
+  };
+
+  // ── Overpass ─────────────────────────────────────────────────────────────────
+  const loading = document.getElementById('loading');
+  let inflight = false;
+
+  async function fetchShops() {
+    if (inflight) return;
+    const b    = map.getBounds();
+    const bbox = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
+    const query = `[out:json][timeout:25];(node["amenity"="fast_food"]["cuisine"="fish_and_chips"](${bbox});way["amenity"="fast_food"]["cuisine"="fish_and_chips"](${bbox}););out center tags;`;
+
+    inflight = true;
+    loading.classList.add('visible');
+    try {
+      const res  = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      for (const el of json.elements) {
+        const id  = String(el.id);
+        const lat = el.lat ?? el.center?.lat;
+        const lon = el.lon ?? el.center?.lon;
+        if (lat == null || lon == null) continue;
+        addOrUpdateMarker(id, lat, lon, el.tags || {});
+      }
+    } catch (err) { console.error('Overpass error:', err); }
+    finally { inflight = false; loading.classList.remove('visible'); applyFilters(); }
+  }
+
+  function debounce(fn, delay) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+  }
+
+  const debouncedFetch = debounce(fetchShops, 600);
+  map.on('moveend', debouncedFetch);
+  map.on('zoomend', debouncedFetch);
+
+  function restoreCustomShops() {
+    for (const [id, shop] of Object.entries(customShops))
+      placeMarker(id, shop.lat, shop.lon, shop.name, shop.address, true);
+  }
+
+  restoreCustomShops();
+  fetchShops();
+
+  // ── Filters ──────────────────────────────────────────────────────────────────
+  const activeFilters = new Set(['yes', 'no', 'unconfirmed', 'community']);
+
+  function markerFilterKey(id) {
+    const status    = scrapsStatus(id);
+    const community = shopData[id]?.community;
+    if (status === 'yes') return 'yes';
+    if (status === 'no')  return 'no';
+    if (community)        return 'community';
+    return 'unconfirmed';
+  }
+
+  function applyFilters() {
+    for (const [id, marker] of Object.entries(markers)) {
+      const key     = markerFilterKey(id);
+      const visible = activeFilters.has(key);
+      if (visible && !map.hasLayer(marker)) marker.addTo(map);
+      if (!visible && map.hasLayer(marker))  map.removeLayer(marker);
+    }
+  }
+
+  document.querySelectorAll('.legend-item[data-filter]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.filter;
+      if (activeFilters.has(key)) {
+        activeFilters.delete(key);
+        el.classList.add('filter-off');
+      } else {
+        activeFilters.add(key);
+        el.classList.remove('filter-off');
+      }
+      applyFilters();
+    });
+  });
+
+  // ── Search by plaice ────────────────────────────────────────────────────────
+  const searchInput   = document.getElementById('search-input');
+  const searchBtn     = document.getElementById('search-btn');
+  const searchResults = document.getElementById('search-results');
+
+  function closeResults() { searchResults.innerHTML = ''; searchResults.classList.remove('visible'); }
+
+  async function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    searchResults.innerHTML = '<div class="search-result-item" style="color:#444;font-style:italic">Searching…</div>';
+    searchResults.classList.add('visible');
+    try {
+      const res     = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`, { headers: { 'Accept-Language': 'en' } });
+      const results = await res.json();
+      searchResults.innerHTML = '';
+      if (!results.length) { searchResults.innerHTML = '<div class="search-result-item" style="color:#444;font-style:italic">No places found</div>'; return; }
+      for (const r of results) {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `<div>${r.display_name.split(',').slice(0, 3).join(',')}</div><div class="result-type">${r.type}</div>`;
+        item.addEventListener('click', () => {
+          map.fitBounds([[parseFloat(r.boundingbox[0]), parseFloat(r.boundingbox[2])], [parseFloat(r.boundingbox[1]), parseFloat(r.boundingbox[3])]], { maxZoom: 14 });
+          searchInput.value = r.display_name.split(',').slice(0, 2).join(',');
+          closeResults();
+        });
+        searchResults.appendChild(item);
+      }
+    } catch { searchResults.innerHTML = '<div class="search-result-item" style="color:#444;font-style:italic">Search failed</div>'; }
+  }
+
+  searchBtn.addEventListener('click', doSearch);
+  searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+  document.addEventListener('click', e => {
+    if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== searchBtn) closeResults();
+  });
+
+  // ── Add shop modal ──────────────────────────────────────────────────────────
+  const overlay          = document.getElementById('modal-overlay');
+  const modalSearchInput = document.getElementById('modal-search-input');
+  const modalSearchBtn   = document.getElementById('modal-search-btn');
+  const modalResults     = document.getElementById('modal-results');
+  const modalError       = document.getElementById('modal-error');
+  const modalCancel      = document.getElementById('modal-cancel');
+
+  document.getElementById('add-shop-btn').addEventListener('click', () => {
+    modalSearchInput.value = '';
+    modalError.textContent = '';
+    modalResults.innerHTML = '';
+    modalResults.classList.remove('visible');
+    overlay.classList.add('visible');
+    setTimeout(() => modalSearchInput.focus(), 50);
+  });
+
+  function closeModal() { overlay.classList.remove('visible'); }
+  modalCancel.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+  let searchController = null;
+
+  async function searchOSM() {
+    const q = modalSearchInput.value.trim();
+    if (q.length < 2) { modalResults.innerHTML = ''; modalResults.classList.remove('visible'); return; }
+
+    modalError.textContent = '';
+    modalResults.innerHTML = '<div class="modal-result-item" style="color:#444;font-style:italic">Searching…</div>';
+    modalResults.classList.add('visible');
+    modalSearchBtn.disabled = true;
+
+    if (searchController) searchController.abort();
+    searchController = new AbortController();
+
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ q, format: 'json', limit: 12, addressdetails: 1, countrycodes: 'gb' });
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' }, signal: searchController.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const results = await res.json();
+
+      modalResults.innerHTML = '';
+      const EXCLUDE = new Set(['highway', 'boundary', 'landuse', 'place', 'railway']);
+      const filtered = results.filter(r => !EXCLUDE.has(r.class));
+
+      if (!filtered.length) {
+        modalResults.innerHTML = '<div class="modal-result-item" style="color:#444;font-style:italic">No businesses found — try a shorter term or include a town.</div>';
+        return;
+      }
+
+      for (const r of filtered) {
+        const name  = r.name || r.display_name.split(',')[0].trim();
+        const a     = r.address || {};
+        const addrParts = [
+          a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road,
+          a.town || a.city || a.village || a.suburb,
+          a.postcode,
+        ].filter(Boolean);
+        const addrStr  = addrParts.join(', ') || r.display_name.split(',').slice(1, 4).join(',').trim();
+        const osmType  = r.osm_type || 'node';
+        const id       = `community_${osmType[0]}${r.osm_id}`;
+        const alreadyAdded = !!customShops[id] || !!shopData[id];
+
+        const item = document.createElement('div');
+        item.className = 'modal-result-item';
+        item.innerHTML = `
+          <strong>${name}${alreadyAdded ? ' <span style="color:#555;font-size:0.7rem">(already added)</span>' : ''}</strong>
+          <span class="result-addr">${addrStr}</span>
+          <span class="result-osm-type">${r.type}</span>`;
+
+        if (!alreadyAdded) {
+          item.addEventListener('click', () => {
+            const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+            customShops[id] = { name, address: addrStr, lat, lon };
+            saveCustomShops();
+            placeMarker(id, lat, lon, name, addrStr, true);
+            map.setView([lat, lon], Math.max(map.getZoom(), 16));
+            setTimeout(() => markers[id] && markers[id].openPopup(), 400);
+            closeModal();
+          });
+        } else {
+          item.style.opacity = '0.4';
+          item.style.cursor  = 'default';
+        }
+        modalResults.appendChild(item);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('Shop search error:', err);
+      modalError.textContent = `Search failed (${err.message})`;
+      modalResults.classList.remove('visible');
+    } finally {
+      modalSearchBtn.disabled = false;
+      searchController = null;
+    }
+  }
+
+  const debouncedSearchOSM = debounce(searchOSM, 400);
+  modalSearchBtn.addEventListener('click', searchOSM);
+  modalSearchInput.addEventListener('input', debouncedSearchOSM);
+  modalSearchInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchOSM(); });
+</script>
+</body>
+</html>
