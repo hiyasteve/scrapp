@@ -564,12 +564,19 @@
 <div id="modal-overlay">
   <div id="modal">
     <h2>Add a missing shop</h2>
-    <p class="modal-sub">Search OpenStreetMap for any business — even if it's not tagged as a fish &amp; chip shop — then add it to your map.</p>
+    <p class="modal-sub">Search by name — add a town or postcode to narrow it down.</p>
     <div id="modal-search-row">
-      <input id="modal-search-input" type="text" placeholder="e.g. steels, golden fry…" autocomplete="off" />
-      <button id="modal-search-btn">Search</button>
+      <input id="modal-search-input" type="text" placeholder="e.g. The Dolphin" autocomplete="off" />
+      <input id="modal-location-input" type="text" placeholder="Town / postcode (optional)" autocomplete="off" style="flex:1;background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;margin-top:6px;width:100%;" />
+      <button id="modal-search-btn" style="margin-top:6px;width:100%;">Search</button>
     </div>
     <div id="modal-results"></div>
+    <div id="modal-manual" style="display:none;margin-bottom:10px;">
+      <div style="font-size:0.75rem;color:#666;margin-bottom:6px;">Can't find it? Add by address instead:</div>
+      <input id="modal-manual-name" type="text" placeholder="Shop name" autocomplete="off" style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;margin-bottom:6px;" />
+      <input id="modal-manual-address" type="text" placeholder="Full address inc. postcode" autocomplete="off" style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;margin-bottom:6px;" />
+      <button id="modal-manual-btn" style="width:100%;background:#fff;border:1px solid #fff;border-radius:4px;color:#000;padding:7px 12px;font-size:0.85rem;font-weight:700;cursor:pointer;">Add this shop</button>
+    </div>
     <div id="modal-error"></div>
     <button id="modal-cancel">Cancel</button>
   </div>
@@ -837,18 +844,25 @@
   });
 
   // ── Add shop modal ──────────────────────────────────────────────────────────
-  const overlay          = document.getElementById('modal-overlay');
-  const modalSearchInput = document.getElementById('modal-search-input');
-  const modalSearchBtn   = document.getElementById('modal-search-btn');
-  const modalResults     = document.getElementById('modal-results');
-  const modalError       = document.getElementById('modal-error');
-  const modalCancel      = document.getElementById('modal-cancel');
+  const overlay           = document.getElementById('modal-overlay');
+  const modalSearchInput  = document.getElementById('modal-search-input');
+  const modalLocationInput= document.getElementById('modal-location-input');
+  const modalSearchBtn    = document.getElementById('modal-search-btn');
+  const modalResults      = document.getElementById('modal-results');
+  const modalManual       = document.getElementById('modal-manual');
+  const modalManualName   = document.getElementById('modal-manual-name');
+  const modalManualAddr   = document.getElementById('modal-manual-address');
+  const modalManualBtn    = document.getElementById('modal-manual-btn');
+  const modalError        = document.getElementById('modal-error');
+  const modalCancel       = document.getElementById('modal-cancel');
 
   document.getElementById('add-shop-btn').addEventListener('click', () => {
-    modalSearchInput.value = '';
-    modalError.textContent = '';
-    modalResults.innerHTML = '';
+    modalSearchInput.value   = '';
+    modalLocationInput.value = '';
+    modalError.textContent   = '';
+    modalResults.innerHTML   = '';
     modalResults.classList.remove('visible');
+    modalManual.style.display = 'none';
     overlay.classList.add('visible');
     setTimeout(() => modalSearchInput.focus(), 50);
   });
@@ -857,11 +871,40 @@
   modalCancel.addEventListener('click', closeModal);
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 
+  // Manual address fallback
+  modalManualBtn.addEventListener('click', async () => {
+    const name    = modalManualName.value.trim();
+    const address = modalManualAddr.value.trim();
+    if (!name || !address) { modalError.textContent = 'Please enter both a name and address.'; return; }
+
+    modalManualBtn.textContent = 'Looking up…';
+    modalManualBtn.disabled    = true;
+    modalError.textContent     = '';
+
+    try {
+      const res     = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=gb`, { headers: { 'Accept-Language': 'en' } });
+      const results = await res.json();
+      if (!results.length) { modalError.textContent = "Couldn't find that address — try adding more detail or the postcode."; return; }
+      const r   = results[0];
+      const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+      const id  = `community_manual_${Date.now()}`;
+      customShops[id] = { name, address, lat, lon };
+      saveCustomShops();
+      placeMarker(id, lat, lon, name, address, true);
+      map.setView([lat, lon], Math.max(map.getZoom(), 16));
+      setTimeout(() => markers[id] && markers[id].openPopup(), 400);
+      closeModal();
+    } catch { modalError.textContent = 'Network error — please try again.'; }
+    finally { modalManualBtn.textContent = 'Add this shop'; modalManualBtn.disabled = false; }
+  });
+
   let searchController = null;
 
   async function searchOSM() {
-    const q = modalSearchInput.value.trim();
-    if (q.length < 2) { modalResults.innerHTML = ''; modalResults.classList.remove('visible'); return; }
+    const name     = modalSearchInput.value.trim();
+    const location = modalLocationInput.value.trim();
+    const q        = location ? `${name}, ${location}` : name;
+    if (name.length < 2) { modalResults.innerHTML = ''; modalResults.classList.remove('visible'); return; }
 
     modalError.textContent = '';
     modalResults.innerHTML = '<div class="modal-result-item" style="color:#444;font-style:italic">Searching…</div>';
@@ -882,7 +925,9 @@
       const filtered = results.filter(r => !EXCLUDE.has(r.class));
 
       if (!filtered.length) {
-        modalResults.innerHTML = '<div class="modal-result-item" style="color:#444;font-style:italic">No businesses found — try a shorter term or include a town.</div>';
+        modalResults.innerHTML = '<div class="modal-result-item" style="color:#444;font-style:italic">No results — try adding a town, or use the manual option below.</div>';
+        modalManual.style.display = 'block';
+        modalManualName.value = modalSearchInput.value.trim();
         return;
       }
 
@@ -937,6 +982,7 @@
   modalSearchBtn.addEventListener('click', searchOSM);
   modalSearchInput.addEventListener('input', debouncedSearchOSM);
   modalSearchInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchOSM(); });
+  modalLocationInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchOSM(); });
 
 </script>
 </body>
