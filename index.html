@@ -732,7 +732,7 @@
   }
 
   function placeMarker(id, lat, lon, name, address, community = false) {
-    shopData[id] = { name, address, community };
+    shopData[id] = { name, address, community, lat, lon };
     if (markers[id]) {
       markers[id].setIcon(makeIcon(scrapsStatus(id), community));
       if (markers[id].isPopupOpen()) markers[id].setPopupContent(buildPopup(id));
@@ -754,7 +754,8 @@
     if (scrapsStatus(id) === value) {
       delete scrapsData[id];
     } else {
-      scrapsData[id] = { v: value, t: Date.now() };
+      const shop = shopData[id];
+      scrapsData[id] = { v: value, t: Date.now(), lat: shop?.lat, lon: shop?.lon };
     }
     saveStorage();
     const community = !!(shopData[id] && shopData[id].community);
@@ -776,11 +777,23 @@
   // ── Overpass ─────────────────────────────────────────────────────────────────
   const loading = document.getElementById('loading');
   let inflight = false;
+  const fetchedBboxes = [];
+
+  function isCovered(s, w, n, e) {
+    return fetchedBboxes.some(f => f.s <= s && f.w <= w && f.n >= n && f.e >= e);
+  }
 
   async function fetchShops() {
     if (inflight) return;
-    const b    = map.getBounds();
-    const bbox = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
+    const b = map.getBounds();
+    const s = b.getSouth(), w = b.getWest(), n = b.getNorth(), e = b.getEast();
+
+    if (isCovered(s, w, n, e)) { applyFilters(); return; }
+
+    // Expand by 50% so nearby panning doesn't trigger another fetch
+    const dLat = (n - s) * 0.5, dLon = (e - w) * 0.5;
+    const qs = s - dLat, qw = w - dLon, qn = n + dLat, qe = e + dLon;
+    const bbox  = `${qs.toFixed(5)},${qw.toFixed(5)},${qn.toFixed(5)},${qe.toFixed(5)}`;
     const query = `[out:json][timeout:25];(node["cuisine"="fish_and_chips"](${bbox});way["cuisine"="fish_and_chips"](${bbox});relation["cuisine"="fish_and_chips"](${bbox}););out center tags;`;
 
     inflight = true;
@@ -789,6 +802,7 @@
       const res  = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
+      fetchedBboxes.push({ s: qs, w: qw, n: qn, e: qe });
       for (const el of json.elements) {
         const id  = String(el.id);
         const lat = el.lat ?? el.center?.lat;
@@ -807,7 +821,7 @@
 
   const debouncedFetch = debounce(fetchShops, 600);
   map.on('moveend', debouncedFetch);
-  map.on('zoomend', debouncedFetch);
+  map.on('zoomend', () => { applyFilters(); debouncedFetch(); });
 
   function restoreCustomShops() {
     for (const [id, shop] of Object.entries(customShops))
@@ -829,6 +843,17 @@
 
   // ── Filters ──────────────────────────────────────────────────────────────────
   const activeFilters = new Set(['yes', 'no', 'unconfirmed', 'community']);
+  const LOW_ZOOM = 9;
+  const zoomDots = {};
+
+  function makeTinyDot(status) {
+    const color = status === 'yes' ? '#2e9e4f' : '#d63c3c';
+    return L.divIcon({
+      className: '',
+      html: `<div style="width:6px;height:6px;border-radius:50%;background:${color};opacity:0.85;"></div>`,
+      iconSize: [6, 6], iconAnchor: [3, 3],
+    });
+  }
 
   function markerFilterKey(id) {
     const status    = scrapsStatus(id);
@@ -840,11 +865,31 @@
   }
 
   function applyFilters() {
+    const lowZoom = map.getZoom() < LOW_ZOOM;
+
+    // Regular markers: hide at low zoom, filter-aware at normal zoom
     for (const [id, marker] of Object.entries(markers)) {
-      const key     = markerFilterKey(id);
-      const visible = activeFilters.has(key);
-      if (visible && !map.hasLayer(marker)) marker.addTo(map);
-      if (!visible && map.hasLayer(marker))  map.removeLayer(marker);
+      if (lowZoom) {
+        if (map.hasLayer(marker)) map.removeLayer(marker);
+      } else {
+        const visible = activeFilters.has(markerFilterKey(id));
+        if (visible  && !map.hasLayer(marker)) marker.addTo(map);
+        if (!visible &&  map.hasLayer(marker)) map.removeLayer(marker);
+      }
+    }
+
+    // Tiny confirmed dots: only at low zoom, from stored lat/lon in scrapsData
+    for (const [id, data] of Object.entries(scrapsData)) {
+      if (!data?.lat || !data?.lon || !data?.v) continue;
+      if (lowZoom) {
+        if (!zoomDots[id]) {
+          zoomDots[id] = L.marker([data.lat, data.lon], { icon: makeTinyDot(data.v) }).addTo(map);
+        } else if (!map.hasLayer(zoomDots[id])) {
+          zoomDots[id].addTo(map);
+        }
+      } else {
+        if (zoomDots[id] && map.hasLayer(zoomDots[id])) map.removeLayer(zoomDots[id]);
+      }
     }
   }
 
