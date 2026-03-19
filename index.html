@@ -879,7 +879,8 @@
       if (lowZoom) {
         if (map.hasLayer(marker)) map.removeLayer(marker);
       } else {
-        const visible = activeFilters.has(markerFilterKey(id));
+        const key = markerFilterKey(id);
+        const visible = activeFilters.has(key);
         if (visible  && !map.hasLayer(marker)) marker.addTo(map);
         if (!visible &&  map.hasLayer(marker)) map.removeLayer(marker);
       }
