@@ -733,6 +733,12 @@
 
   function placeMarker(id, lat, lon, name, address, community = false) {
     shopData[id] = { name, address, community, lat, lon };
+    // Back-fill coordinates into existing votes that predate lat/lon storage
+    if (scrapsData[id] && typeof scrapsData[id] === 'object' && !scrapsData[id].lat) {
+      scrapsData[id].lat = lat;
+      scrapsData[id].lon = lon;
+      saveStorage();
+    }
     if (markers[id]) {
       markers[id].setIcon(makeIcon(scrapsStatus(id), community));
       if (markers[id].isPopupOpen()) markers[id].setPopupContent(buildPopup(id));
