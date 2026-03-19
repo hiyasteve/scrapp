@@ -383,7 +383,7 @@
     #modal-overlay.visible { display: flex; }
 
     #modal {
-      background: #fff;
+      background: #ffffff !important;
       border: 1px solid #ddd;
       border-radius: 8px;
       padding: 24px;
@@ -410,14 +410,15 @@
     #modal-manual-name,
     #modal-manual-address {
       width: 100%;
-      background: #fff;
-      border: 1px solid #ddd;
+      background: #ffffff !important;
+      border: 1px solid #ccc;
       border-radius: 4px;
-      color: #000;
+      color: #000 !important;
       padding: 7px 10px;
       font-size: 0.85rem;
       outline: none;
       transition: border-color 0.15s;
+      -webkit-text-fill-color: #000;
     }
 
     #modal-search-input:focus,
@@ -428,7 +429,15 @@
     #modal-search-input::placeholder,
     #modal-location-input::placeholder,
     #modal-manual-name::placeholder,
-    #modal-manual-address::placeholder { color: #bbb; }
+    #modal-manual-address::placeholder { color: #aaa; }
+
+    #modal-search-input:-webkit-autofill,
+    #modal-location-input:-webkit-autofill,
+    #modal-manual-name:-webkit-autofill,
+    #modal-manual-address:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 100px #ffffff inset !important;
+      -webkit-text-fill-color: #000 !important;
+    }
 
     #modal-search-btn {
       width: 100%;
@@ -584,10 +593,10 @@
     </div>
     <div id="modal-results"></div>
     <div id="modal-manual" style="display:none;margin-bottom:10px;">
-      <div style="font-size:0.75rem;color:#666;margin-bottom:6px;">Can't find it? Add by address instead:</div>
-      <input id="modal-manual-name" type="text" placeholder="Shop name" autocomplete="off" style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;margin-bottom:6px;" />
-      <input id="modal-manual-address" type="text" placeholder="Full address inc. postcode" autocomplete="off" style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;margin-bottom:6px;" />
-      <button id="modal-manual-btn" style="width:100%;background:#fff;border:1px solid #fff;border-radius:4px;color:#000;padding:7px 12px;font-size:0.85rem;font-weight:700;cursor:pointer;">Add this shop</button>
+      <div style="font-size:0.75rem;color:#888;margin-bottom:6px;">Can't find it? Add by address instead:</div>
+      <input id="modal-manual-name" type="text" placeholder="Shop name" autocomplete="off" style="margin-bottom:6px;" />
+      <input id="modal-manual-address" type="text" placeholder="Full address inc. postcode" autocomplete="off" style="margin-bottom:6px;" />
+      <button id="modal-manual-btn" style="width:100%;background:#000;border:1px solid #000;border-radius:4px;color:#fff;padding:7px 12px;font-size:0.85rem;font-weight:700;cursor:pointer;">Add this shop</button>
     </div>
     <div id="modal-error"></div>
     <button id="modal-cancel">Cancel</button>
