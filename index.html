@@ -152,8 +152,8 @@
 
     #add-shop-btn:hover { background: #333; }
 
-    /* Legend */
-    #legend { display: flex; flex-direction: column; gap: 7px; }
+    /* Legend / filters */
+    #legend { display: flex; flex-direction: column; gap: 5px; }
 
     .legend-item {
       display: flex;
@@ -161,6 +161,18 @@
       gap: 8px;
       font-size: 0.78rem;
       color: #666;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      user-select: none;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    .legend-item:hover { background: #f5f5f5; }
+
+    .legend-item.filter-off {
+      opacity: 0.35;
     }
 
     .legend-dot {
@@ -245,8 +257,14 @@
     .popup-inner .address {
       font-size: 0.75rem;
       color: #888;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
       line-height: 1.4;
+    }
+
+    .popup-inner .updated {
+      font-size: 0.68rem;
+      color: #bbb;
+      margin-bottom: 10px;
     }
 
     .scraps-btns {
@@ -482,10 +500,10 @@
     <div>
       <div class="sidebar-label">Legend</div>
       <div id="legend">
-        <div class="legend-item"><div class="legend-dot dot-green"></div>Serves scraps ✓</div>
-        <div class="legend-item"><div class="legend-dot dot-red"></div>No scraps ✗</div>
-        <div class="legend-item"><div class="legend-dot dot-grey"></div>Unconfirmed</div>
-        <div class="legend-item"><div class="legend-dot dot-orange"></div>Community added</div>
+        <div class="legend-item" data-filter="yes"><div class="legend-dot dot-green"></div>Serves scraps ✓</div>
+        <div class="legend-item" data-filter="no"><div class="legend-dot dot-red"></div>No scraps ✗</div>
+        <div class="legend-item" data-filter="unconfirmed"><div class="legend-dot dot-grey"></div>Unconfirmed</div>
+        <div class="legend-item" data-filter="community"><div class="legend-dot dot-orange"></div>Community added</div>
       </div>
     </div>
 
@@ -556,10 +574,21 @@
     try { customShops = JSON.parse(localStorage.getItem(CUSTOM_KEY)  || '{}'); } catch { customShops = {}; }
   }
 
-  function saveStorage()        { localStorage.setItem(STORAGE_KEY, JSON.stringify(scrapsData)); }
-  function saveCustomShops()    { localStorage.setItem(CUSTOM_KEY,  JSON.stringify(customShops)); }
-  // Returns 'yes', 'no', or null
-  function scrapsStatus(id)     { return scrapsData[id] ?? null; }
+  function saveStorage()     { localStorage.setItem(STORAGE_KEY, JSON.stringify(scrapsData)); }
+  function saveCustomShops() { localStorage.setItem(CUSTOM_KEY,  JSON.stringify(customShops)); }
+
+  // scrapsData[id] is { v: 'yes'|'no', t: timestamp } or null/missing
+  // Handles legacy string values gracefully
+  function scrapsStatus(id) {
+    const d = scrapsData[id];
+    if (!d) return null;
+    return typeof d === 'object' ? d.v : d;
+  }
+  function scrapsTimestamp(id) {
+    const d = scrapsData[id];
+    if (!d || typeof d !== 'object') return null;
+    return d.t;
+  }
 
   loadStorage();
 
@@ -578,15 +607,23 @@
     return parts.join(', ') || 'Address unknown';
   }
 
+  function formatDate(ts) {
+    if (!ts) return null;
+    return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   function buildPopup(id) {
     const shop      = shopData[id];
     const status    = scrapsStatus(id);
+    const ts        = scrapsTimestamp(id);
     const community = !!shop.community;
+    const updatedLine = ts ? `<div class="updated">Last updated: ${formatDate(ts)}</div>` : '';
     return `
       <div class="popup-inner">
         <h3>${shop.name}</h3>
         ${community ? '<div class="community-badge">Community added</div>' : ''}
         <div class="address">${shop.address}</div>
+        ${updatedLine}
         <div class="scraps-btns">
           <button class="scraps-btn ${status === 'yes' ? 'active-yes' : ''}" onclick="setScraps('${id}', 'yes')">✓ Serves scraps</button>
           <button class="scraps-btn ${status === 'no'  ? 'active-no'  : ''}" onclick="setScraps('${id}', 'no')">✗ No scraps</button>
@@ -613,13 +650,17 @@
 
   // Clicking an already-active button resets to unconfirmed
   window.setScraps = function(id, value) {
-    scrapsData[id] = scrapsStatus(id) === value ? null : value;
-    if (scrapsData[id] === null) delete scrapsData[id];
+    if (scrapsStatus(id) === value) {
+      delete scrapsData[id];
+    } else {
+      scrapsData[id] = { v: value, t: Date.now() };
+    }
     saveStorage();
     const community = !!(shopData[id] && shopData[id].community);
     if (markers[id]) {
       markers[id].setIcon(makeIcon(scrapsStatus(id), community));
       markers[id].setPopupContent(buildPopup(id));
+      applyFilters();
     }
   };
 
@@ -655,7 +696,7 @@
         addOrUpdateMarker(id, lat, lon, el.tags || {});
       }
     } catch (err) { console.error('Overpass error:', err); }
-    finally { inflight = false; loading.classList.remove('visible'); }
+    finally { inflight = false; loading.classList.remove('visible'); applyFilters(); }
   }
 
   function debounce(fn, delay) {
@@ -674,6 +715,41 @@
 
   restoreCustomShops();
   fetchShops();
+
+  // ── Filters ──────────────────────────────────────────────────────────────────
+  const activeFilters = new Set(['yes', 'no', 'unconfirmed', 'community']);
+
+  function markerFilterKey(id) {
+    const status    = scrapsStatus(id);
+    const community = shopData[id]?.community;
+    if (status === 'yes') return 'yes';
+    if (status === 'no')  return 'no';
+    if (community)        return 'community';
+    return 'unconfirmed';
+  }
+
+  function applyFilters() {
+    for (const [id, marker] of Object.entries(markers)) {
+      const key     = markerFilterKey(id);
+      const visible = activeFilters.has(key);
+      if (visible && !map.hasLayer(marker)) marker.addTo(map);
+      if (!visible && map.hasLayer(marker))  map.removeLayer(marker);
+    }
+  }
+
+  document.querySelectorAll('.legend-item[data-filter]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.filter;
+      if (activeFilters.has(key)) {
+        activeFilters.delete(key);
+        el.classList.add('filter-off');
+      } else {
+        activeFilters.add(key);
+        el.classList.remove('filter-off');
+      }
+      applyFilters();
+    });
+  });
 
   // ── Search by plaice ────────────────────────────────────────────────────────
   const searchInput   = document.getElementById('search-input');
