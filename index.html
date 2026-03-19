@@ -264,18 +264,26 @@
     .leaflet-popup-content-wrapper {
       background: #fff;
       color: #000;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      padding: 4px;
     }
 
+    .leaflet-popup-content { margin: 12px 14px; }
+
+    .leaflet-popup-tip-container { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
     .leaflet-popup-tip { background: #fff; }
 
-    .popup-inner { min-width: 180px; }
+    .leaflet-popup-close-button { color: #999 !important; font-size: 1.1rem !important; }
+    .leaflet-popup-close-button:hover { color: #000 !important; }
+
+    .popup-inner { min-width: 190px; }
 
     .popup-inner h3 {
-      font-size: 0.95rem;
+      font-size: 1rem;
       color: #000;
+      font-weight: 700;
       margin-bottom: 4px;
     }
 
@@ -284,7 +292,7 @@
       font-size: 0.62rem;
       background: transparent;
       border: 1px solid #ddd;
-      color: #999;
+      color: #888;
       border-radius: 3px;
       padding: 1px 5px;
       margin-bottom: 6px;
@@ -293,15 +301,15 @@
     }
 
     .popup-inner .address {
-      font-size: 0.75rem;
-      color: #888;
+      font-size: 0.78rem;
+      color: #444;
       margin-bottom: 6px;
       line-height: 1.4;
     }
 
     .popup-inner .updated {
-      font-size: 0.68rem;
-      color: #bbb;
+      font-size: 0.7rem;
+      color: #999;
       margin-bottom: 10px;
     }
 
@@ -564,11 +572,11 @@
 <div id="modal-overlay">
   <div id="modal">
     <h2>Add a missing shop</h2>
-    <p class="modal-sub">Search by name — add a town or postcode to narrow it down.</p>
-    <div id="modal-search-row">
-      <input id="modal-search-input" type="text" placeholder="e.g. The Dolphin" autocomplete="off" />
-      <input id="modal-location-input" type="text" placeholder="Town / postcode (optional)" autocomplete="off" style="flex:1;background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;margin-top:6px;width:100%;" />
-      <button id="modal-search-btn" style="margin-top:6px;width:100%;">Search</button>
+    <p class="modal-sub">Search by name, then narrow by town or postcode if needed.</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">
+      <input id="modal-search-input" type="text" placeholder="Shop name, e.g. The Dolphin" autocomplete="off" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;width:100%;" />
+      <input id="modal-location-input" type="text" placeholder="Town or postcode (optional)" autocomplete="off" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;width:100%;" />
+      <button id="modal-search-btn" style="background:#fff;border:1px solid #fff;border-radius:4px;color:#000;padding:7px 12px;font-size:0.85rem;font-weight:700;cursor:pointer;">Search</button>
     </div>
     <div id="modal-results"></div>
     <div id="modal-manual" style="display:none;margin-bottom:10px;">
