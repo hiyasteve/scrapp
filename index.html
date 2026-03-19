@@ -849,7 +849,7 @@
         item.className = 'search-result-item';
         item.innerHTML = `<div>${r.display_name.split(',').slice(0, 3).join(',')}</div><div class="result-type">${r.type}</div>`;
         item.addEventListener('click', () => {
-          map.fitBounds([[parseFloat(r.boundingbox[0]), parseFloat(r.boundingbox[2])], [parseFloat(r.boundingbox[1]), parseFloat(r.boundingbox[3])]], { maxZoom: 16 });
+          map.setView([parseFloat(r.lat), parseFloat(r.lon)], 15);
           searchInput.value = r.display_name.split(',').slice(0, 2).join(',');
           closeResults();
         });
