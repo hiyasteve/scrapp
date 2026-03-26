@@ -907,22 +907,22 @@
   let locationCentred = false;
 
   if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(
-      pos => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        if (!locationMarker) {
-          locationMarker = L.marker([lat, lon], { icon: locationIcon, zIndexOffset: 1000, interactive: false }).addTo(map);
-        } else {
-          locationMarker.setLatLng([lat, lon]);
-        }
-        if (!locationCentred) {
-          map.setView([lat, lon], 15);
-          locationCentred = true;
-        }
-      },
-      () => { /* permission denied or unavailable — stay on Manchester */ },
-      { timeout: 10000, maximumAge: 30000 }
-    );
+    function onPosition(pos) {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      if (!locationMarker) {
+        locationMarker = L.marker([lat, lon], { icon: locationIcon, zIndexOffset: 1000, interactive: false }).addTo(map);
+      } else {
+        locationMarker.setLatLng([lat, lon]);
+      }
+      if (!locationCentred) {
+        map.setView([lat, lon], 15);
+        locationCentred = true;
+      }
+    }
+    // Fast network-based fix first to centre the map quickly
+    navigator.geolocation.getCurrentPosition(onPosition, () => {}, { timeout: 8000, enableHighAccuracy: false });
+    // Then watch for accurate GPS position for the marker
+    navigator.geolocation.watchPosition(onPosition, () => {}, { timeout: 15000, maximumAge: 30000, enableHighAccuracy: true });
   }
 
   // ── Initialise: load Supabase data, then place markers and fetch OSM ─────────
