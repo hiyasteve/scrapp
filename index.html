@@ -250,6 +250,19 @@
     .dot-orange    { background: #e07b00; }
     .dot-red       { background: #d63c3c; }
 
+    /* About */
+    .about-section { list-style: none; }
+    .about-section summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+    }
+    .about-section summary::-webkit-details-marker { display: none; }
+    .about-toggle::before { content: '+'; font-size: 1rem; color: #aaa; font-weight: 300; }
+    .about-section[open] .about-toggle::before { content: '−'; }
+
     /* Loading */
     #loading {
       position: fixed;
@@ -560,7 +573,7 @@
         <h1>🐟 Scrapp</h1>
         <button id="sidebar-close" aria-label="Close menu">✕</button>
       </div>
-      <p>Community map of fish &amp; chip shops that serve scraps</p>
+      <p>Scrapp is a community map of places where you can buy scraps ("pieces of deep-fried batter left over in the fryer as a by-product of frying, served as an accompaniment to chips"). Please contribute to this important citizen science project by marking whether your local chippies (or the chippies you visit on your travels) sell scraps.</p>
     </div>
 
     <div class="sidebar-divider"></div>
@@ -581,7 +594,15 @@
     <div>
       <div class="sidebar-label">Missing a shop?</div>
       <button id="add-shop-btn">+ Add missing shop</button>
+      <p style="font-size:0.72rem;color:#888;line-height:1.5;margin-top:6px;">If we're missing a chippy and you can't be bothered to find it yourself, just send me over the details to stephen.b.carlton@gmail.com</p>
     </div>
+
+    <div class="sidebar-divider"></div>
+
+    <details class="about-section">
+      <summary><span class="sidebar-label" style="margin-bottom:0">About</span><span class="about-toggle"></span></summary>
+      <p style="font-size:0.75rem;color:#666;line-height:1.6;margin-top:10px;">Hello! I love scraps but it can be difficult to find chippies that sell them. That's why I've made Scrapp, to document where scraps are available. It's possible that this site won't work very well because I'm not good at this. If you absolutely love it, send me an email about it.</p>
+    </details>
 
     <div class="sidebar-divider"></div>
 
@@ -591,7 +612,6 @@
         <div class="legend-item" data-filter="yes"><div class="legend-dot dot-green"></div>Serves scraps ✓</div>
         <div class="legend-item" data-filter="no"><div class="legend-dot dot-red"></div>No scraps ✗</div>
         <div class="legend-item" data-filter="unconfirmed"><div class="legend-dot dot-grey"></div>Unconfirmed</div>
-        <div class="legend-item" data-filter="community"><div class="legend-dot dot-orange"></div>Community added</div>
       </div>
     </div>
 
@@ -648,9 +668,6 @@
       bg = '#2e9e4f'; border = '#1e7a3a';
     } else if (scrapsStatus === 'no') {
       bg = '#d63c3c'; border = '#a82828';
-    } else if (community) {
-      bg = '#e07b00'; border = '#b86200';
-      inner = `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;line-height:1">+</span>`;
     } else {
       bg = '#bbb'; border = '#999';
     }
@@ -737,7 +754,6 @@
     return `
       <div class="popup-inner">
         <h3>${shop.name}</h3>
-        ${community ? '<div class="community-badge">Community added</div>' : ''}
         <div class="address">${shop.address}</div>
         ${updatedLine}
         <div class="scraps-btns">
@@ -877,7 +893,7 @@
     .finally(() => { restoreCustomShops(); fetchShops(); });
 
   // ── Filters ──────────────────────────────────────────────────────────────────
-  const activeFilters = new Set(['yes', 'no', 'unconfirmed', 'community']);
+  const activeFilters = new Set(['yes', 'no', 'unconfirmed']);
   const LOW_ZOOM = 6;   // below this: tiny dot mode, no Overpass
   const MID_ZOOM = 12;  // below this: hide unconfirmed markers
   const zoomDots = {};
@@ -896,7 +912,6 @@
     const community = shopData[id]?.community;
     if (status === 'yes') return 'yes';
     if (status === 'no')  return 'no';
-    if (community)        return 'community';
     return 'unconfirmed';
   }
 
