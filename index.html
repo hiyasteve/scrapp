@@ -733,10 +733,17 @@
     }
   }
 
+  // Local coordinate cache — fallback for votes that predate lat/lon storage in Supabase
+  const COORDS_KEY = 'scrapp-coords-v1';
+  let coordsCache = {};
+  try { coordsCache = JSON.parse(localStorage.getItem(COORDS_KEY) || '{}'); } catch {}
+
   function restoreConfirmedShops() {
     for (const [id, data] of Object.entries(scrapsData)) {
-      if (data?.lat && data?.lon && data?.v) {
-        placeMarker(id, data.lat, data.lon, 'Confirmed shop', 'Address unknown', false);
+      const lat = data?.lat ?? coordsCache[id]?.lat;
+      const lon = data?.lon ?? coordsCache[id]?.lon;
+      if (lat && lon && data?.v) {
+        placeMarker(id, lat, lon, 'Confirmed shop', 'Address unknown', false);
       }
     }
   }
@@ -793,6 +800,11 @@
 
   function placeMarker(id, lat, lon, name, address, community = false) {
     shopData[id] = { name, address, community, lat, lon };
+    // Cache coordinates locally for confirmed shops so they survive page reloads
+    if (scrapsData[id]?.v && !coordsCache[id]) {
+      coordsCache[id] = { lat, lon };
+      localStorage.setItem(COORDS_KEY, JSON.stringify(coordsCache));
+    }
     if (markers[id]) {
       markers[id].setIcon(makeIcon(scrapsStatus(id), community));
       if (markers[id].isPopupOpen()) markers[id].setPopupContent(buildPopup(id));
