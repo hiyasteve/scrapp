@@ -726,7 +726,7 @@
       sbFetch('custom_shops?select=*'),
     ]);
     for (const v of votes) {
-      scrapsData[v.shop_id] = { v: v.status, t: new Date(v.updated_at).getTime(), lat: v.lat, lon: v.lon };
+      scrapsData[v.shop_id] = { v: v.status, t: new Date(v.updated_at).getTime(), lat: v.lat, lon: v.lon, name: v.name, address: v.address };
     }
     for (const s of shops) {
       customShops[s.id] = { name: s.name, address: s.address, lat: s.lat, lon: s.lon };
@@ -743,8 +743,8 @@
       const lat = data?.lat ?? coordsCache[id]?.lat;
       const lon = data?.lon ?? coordsCache[id]?.lon;
       if (lat && lon && data?.v) {
-        const name    = coordsCache[id]?.name    || 'Confirmed shop';
-        const address = coordsCache[id]?.address || 'Address unknown';
+        const name    = data.name    || coordsCache[id]?.name    || 'Confirmed shop';
+        const address = data.address || coordsCache[id]?.address || 'Address unknown';
         placeMarker(id, lat, lon, name, address, false);
       }
     }
@@ -831,6 +831,11 @@
       delete scrapsData[id];
     } else {
       scrapsData[id] = { v: value, t: Date.now(), lat: shop?.lat, lon: shop?.lon };
+      // Cache name/address so it survives page reloads
+      if (shop?.lat && shop?.lon && shop?.name && shop.name !== 'Confirmed shop') {
+        coordsCache[id] = { lat: shop.lat, lon: shop.lon, name: shop.name, address: shop.address };
+        localStorage.setItem(COORDS_KEY, JSON.stringify(coordsCache));
+      }
     }
     const community = !!(shop && shop.community);
     if (markers[id]) {
@@ -845,7 +850,7 @@
         await sbFetch('votes', {
           method: 'POST',
           headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify({ shop_id: id, status: value, lat: shop?.lat, lon: shop?.lon, updated_at: new Date().toISOString() }),
+          body: JSON.stringify({ shop_id: id, status: value, lat: shop?.lat, lon: shop?.lon, name: shop?.name, address: shop?.address, updated_at: new Date().toISOString() }),
         });
       }
     } catch (err) { console.error('Vote save failed:', err); }
