@@ -726,10 +726,18 @@
       sbFetch('custom_shops?select=*'),
     ]);
     for (const v of votes) {
-      scrapsData[v.shop_id] = { v: v.status, t: new Date(v.updated_at).getTime() };
+      scrapsData[v.shop_id] = { v: v.status, t: new Date(v.updated_at).getTime(), lat: v.lat, lon: v.lon };
     }
     for (const s of shops) {
       customShops[s.id] = { name: s.name, address: s.address, lat: s.lat, lon: s.lon };
+    }
+  }
+
+  function restoreConfirmedShops() {
+    for (const [id, data] of Object.entries(scrapsData)) {
+      if (data?.lat && data?.lon && data?.v) {
+        placeMarker(id, data.lat, data.lon, 'Confirmed shop', 'Address unknown', false);
+      }
     }
   }
 
@@ -804,12 +812,13 @@
   // Clicking an already-active button resets to unconfirmed
   window.setScraps = async function(id, value) {
     const wasActive = scrapsStatus(id) === value;
+    const shop = shopData[id];
     if (wasActive) {
       delete scrapsData[id];
     } else {
-      scrapsData[id] = { v: value, t: Date.now() };
+      scrapsData[id] = { v: value, t: Date.now(), lat: shop?.lat, lon: shop?.lon };
     }
-    const community = !!(shopData[id] && shopData[id].community);
+    const community = !!(shop && shop.community);
     if (markers[id]) {
       markers[id].setIcon(makeIcon(scrapsStatus(id), community));
       markers[id].setPopupContent(buildPopup(id));
@@ -822,7 +831,7 @@
         await sbFetch('votes', {
           method: 'POST',
           headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify({ shop_id: id, status: value, updated_at: new Date().toISOString() }),
+          body: JSON.stringify({ shop_id: id, status: value, lat: shop?.lat, lon: shop?.lon, updated_at: new Date().toISOString() }),
         });
       }
     } catch (err) { console.error('Vote save failed:', err); }
@@ -937,7 +946,7 @@
   // ── Initialise: load Supabase data, then place markers and fetch OSM ─────────
   loadData()
     .catch(err => console.error('Failed to load Supabase data:', err))
-    .finally(() => { restoreCustomShops(); fetchShops(); });
+    .finally(() => { restoreConfirmedShops(); restoreCustomShops(); fetchShops(); });
 
   // ── Filters ──────────────────────────────────────────────────────────────────
   const activeFilters = new Set(['yes', 'no', 'unconfirmed']);
