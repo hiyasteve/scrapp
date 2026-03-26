@@ -743,7 +743,9 @@
       const lat = data?.lat ?? coordsCache[id]?.lat;
       const lon = data?.lon ?? coordsCache[id]?.lon;
       if (lat && lon && data?.v) {
-        placeMarker(id, lat, lon, 'Confirmed shop', 'Address unknown', false);
+        const name    = coordsCache[id]?.name    || 'Confirmed shop';
+        const address = coordsCache[id]?.address || 'Address unknown';
+        placeMarker(id, lat, lon, name, address, false);
       }
     }
   }
@@ -800,14 +802,14 @@
 
   function placeMarker(id, lat, lon, name, address, community = false) {
     shopData[id] = { name, address, community, lat, lon };
-    // Cache coordinates locally for confirmed shops so they survive page reloads
-    if (scrapsData[id]?.v && !coordsCache[id]) {
-      coordsCache[id] = { lat, lon };
+    // Cache coordinates + name/address locally for confirmed shops so they survive page reloads
+    if (scrapsData[id]?.v && (!coordsCache[id] || coordsCache[id].name === 'Confirmed shop')) {
+      coordsCache[id] = { lat, lon, name, address };
       localStorage.setItem(COORDS_KEY, JSON.stringify(coordsCache));
     }
     if (markers[id]) {
       markers[id].setIcon(makeIcon(scrapsStatus(id), community));
-      if (markers[id].isPopupOpen()) markers[id].setPopupContent(buildPopup(id));
+      markers[id].setPopupContent(buildPopup(id));
       return;
     }
     const m = L.marker([lat, lon], { icon: makeIcon(scrapsStatus(id), community) })
