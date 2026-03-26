@@ -250,6 +250,21 @@
     .dot-orange    { background: #e07b00; }
     .dot-red       { background: #d63c3c; }
 
+    /* Location dot */
+    .location-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #4a90e2;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px rgba(74,144,226,0.4);
+      animation: location-pulse 2s ease-out infinite;
+    }
+    @keyframes location-pulse {
+      0%   { box-shadow: 0 0 0 2px rgba(74,144,226,0.4); }
+      70%  { box-shadow: 0 0 0 8px rgba(74,144,226,0); }
+      100% { box-shadow: 0 0 0 2px rgba(74,144,226,0); }
+    }
+
     /* About */
     .about-section { list-style: none; }
     .about-section summary {
@@ -601,7 +616,7 @@
 
     <details class="about-section" open>
       <summary><span class="sidebar-label" style="margin-bottom:0">About</span><span class="about-toggle"></span></summary>
-      <p style="font-size:0.75rem;color:#666;line-height:1.6;margin-top:10px;">Hello! I love scraps but it can be difficult to find chippies that sell them. That's why I've made Scrapp, to document where scraps are available. It's possible that this site won't work very well because I'm not good at this. If you absolutely love it, send me an email about it. Also, contact me if you can think of a way to monetise this stupid idea.</p>
+      <p style="font-size:0.75rem;color:#666;line-height:1.6;margin-top:10px;">Hello! I love scraps but it can be difficult to find chippies that sell them. That's why I've made Scrapp, to document where scraps are available. It's possible that this site won't work very well because I'm not good at this. If you absolutely love it, send me an email about it.</p>
     </details>
 
     <div class="sidebar-divider"></div>
@@ -613,6 +628,10 @@
         <div class="legend-item" data-filter="no"><div class="legend-dot dot-red"></div>No scraps ✗</div>
         <div class="legend-item" data-filter="unconfirmed"><div class="legend-dot dot-grey"></div>Unconfirmed</div>
       </div>
+    </div>
+
+    <div style="font-size:0.68rem;color:#bbb;line-height:1.5;margin-top:auto;padding-top:8px;">
+      Shop data © <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:#bbb;">OpenStreetMap</a> contributors, available under the Open Database Licence.
     </div>
 
   </div>
@@ -878,12 +897,31 @@
       placeMarker(id, shop.lat, shop.lon, shop.name, shop.address, true);
   }
 
-  // ── Default to user's location ───────────────────────────────────────────────
+  // ── User location dot ────────────────────────────────────────────────────────
+  const locationIcon = L.divIcon({
+    className: '',
+    html: '<div class="location-dot"></div>',
+    iconSize: [14, 14], iconAnchor: [7, 7],
+  });
+  let locationMarker = null;
+  let locationCentred = false;
+
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => { map.setView([pos.coords.latitude, pos.coords.longitude], 15); },
-      ()  => { /* permission denied or unavailable — stay on Manchester */ },
-      { timeout: 6000 }
+    navigator.geolocation.watchPosition(
+      pos => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        if (!locationMarker) {
+          locationMarker = L.marker([lat, lon], { icon: locationIcon, zIndexOffset: 1000, interactive: false }).addTo(map);
+        } else {
+          locationMarker.setLatLng([lat, lon]);
+        }
+        if (!locationCentred) {
+          map.setView([lat, lon], 15);
+          locationCentred = true;
+        }
+      },
+      () => { /* permission denied or unavailable — stay on Manchester */ },
+      { timeout: 10000, maximumAge: 30000 }
     );
   }
 
