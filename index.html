@@ -931,20 +931,6 @@
     );
   }
 
-  // Locate button
-  const LocateControl = L.Control.extend({
-    onAdd() {
-      const btn = L.DomUtil.create('button', '');
-      btn.title = 'Go to my location';
-      btn.innerHTML = '⊕';
-      btn.style.cssText = 'width:34px;height:34px;background:#fff;border:2px solid rgba(0,0,0,0.2);border-radius:4px;font-size:1.3rem;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,0.4);padding:0;';
-      L.DomEvent.on(btn, 'click', L.DomEvent.stop);
-      L.DomEvent.on(btn, 'click', () => locateMe(true));
-      return btn;
-    }
-  });
-  new LocateControl({ position: 'bottomright' }).addTo(map);
-
   // Try on load
   locateMe(false);
 
