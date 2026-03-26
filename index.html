@@ -906,18 +906,30 @@
   let locationMarker = null;
   let locationCentred = false;
 
-  // ── Location via Leaflet locate ──────────────────────────────────────────────
-  map.on('locationfound', e => {
+  // ── User location ────────────────────────────────────────────────────────────
+  function setLocationMarker(lat, lon) {
     if (!locationMarker) {
-      locationMarker = L.marker(e.latlng, { icon: locationIcon, zIndexOffset: 1000, interactive: false }).addTo(map);
+      locationMarker = L.marker([lat, lon], { icon: locationIcon, zIndexOffset: 1000, interactive: false }).addTo(map);
     } else {
-      locationMarker.setLatLng(e.latlng);
+      locationMarker.setLatLng([lat, lon]);
     }
-    if (!locationCentred) {
-      map.setView(e.latlng, 15);
-      locationCentred = true;
-    }
-  });
+  }
+
+  function locateMe(centreMap) {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        setLocationMarker(lat, lon);
+        if (centreMap || !locationCentred) {
+          map.setView([lat, lon], 15);
+          locationCentred = true;
+        }
+      },
+      err => { console.warn('Geolocation error:', err.code, err.message); },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
+    );
+  }
 
   // Locate button
   const LocateControl = L.Control.extend({
@@ -925,16 +937,16 @@
       const btn = L.DomUtil.create('button', '');
       btn.title = 'Go to my location';
       btn.innerHTML = '⊕';
-      btn.style.cssText = 'width:34px;height:34px;background:#fff;border:1px solid #ccc;border-radius:4px;font-size:1.2rem;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;line-height:1;';
-      btn.onclick = () => { locationCentred = false; map.locate({ setView: false, enableHighAccuracy: false }); };
-      L.DomEvent.disableClickPropagation(btn);
+      btn.style.cssText = 'width:34px;height:34px;background:#fff;border:2px solid rgba(0,0,0,0.2);border-radius:4px;font-size:1.3rem;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,0.4);padding:0;';
+      L.DomEvent.on(btn, 'click', L.DomEvent.stop);
+      L.DomEvent.on(btn, 'click', () => locateMe(true));
       return btn;
     }
   });
   new LocateControl({ position: 'bottomright' }).addTo(map);
 
   // Try on load
-  map.locate({ setView: false, enableHighAccuracy: false });
+  locateMe(false);
 
   // ── Initialise: load Supabase data, then place markers and fetch OSM ─────────
   loadData()
