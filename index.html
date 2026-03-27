@@ -1235,7 +1235,7 @@
   function closeSidebar() {
     sidebar.classList.remove('open');
     backdrop.classList.remove('visible');
-    menuBtn.style.display = '';
+    menuBtn.style.display = 'flex';
   }
 
   menuBtn.addEventListener('click', openSidebar);
@@ -1245,12 +1245,8 @@
   // Close sidebar after selecting a place (event delegation on results container)
   searchResults.addEventListener('click', closeSidebar);
 
-  // ── First-visit welcome: open sidebar on mobile ──────────────────────────────
-  const VISITED_KEY = 'scrapp-visited';
-  if (!localStorage.getItem(VISITED_KEY) && window.innerWidth <= 640) {
-    openSidebar();
-  }
-  localStorage.setItem(VISITED_KEY, '1');
+  // Open sidebar on mobile on every load
+  if (window.innerWidth <= 640) openSidebar();
 
 </script>
 </body>
