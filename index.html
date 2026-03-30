@@ -71,6 +71,8 @@
         z-index: 500;
       }
       #sidebar.open { transform: translateX(0); }
+      /* Prevent iOS auto-zoom on input focus */
+      input { font-size: 16px !important; }
     }
 
     #sidebar-inner {
@@ -612,7 +614,7 @@
     <div>
       <div class="sidebar-label">missing a shop?</div>
       <button id="add-shop-btn">+ add missing shop</button>
-      <p style="font-size:0.8rem;color:#555;line-height:1.5;margin-top:6px;">if we're missing a chippy and you can't be bothered to find it yourself, just send me over the details to stephen.b.carlton@gmail.com</p>
+      <p style="font-size:0.8rem;line-height:1.5;margin-top:6px;">if we're missing a chippy and you can't be bothered to find it yourself, just send me over the details to stephen.b.carlton@gmail.com</p>
     </div>
 
     <div class="sidebar-divider"></div>
