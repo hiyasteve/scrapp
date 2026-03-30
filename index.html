@@ -890,22 +890,47 @@
     // Expand by 50% so nearby panning doesn't trigger another fetch
     const dLat = (n - s) * 0.5, dLon = (e - w) * 0.5;
     const qs = s - dLat, qw = w - dLon, qn = n + dLat, qe = e + dLon;
-    const bbox  = `${qs.toFixed(5)},${qw.toFixed(5)},${qn.toFixed(5)},${qe.toFixed(5)}`;
-    const query = `[out:json][timeout:25];(node["cuisine"="fish_and_chips"](${bbox});way["cuisine"="fish_and_chips"](${bbox});relation["cuisine"="fish_and_chips"](${bbox}););out center tags;`;
 
+    // Mark covered immediately to prevent duplicate fetches while requests are in flight
+    fetchedBboxes.push({ s: qs, w: qw, n: qn, e: qe });
+
+    // Step 1: fast path — load from Supabase shops table
+    try {
+      const supaShops = await sbFetch(
+        `shops?select=*&lat=gte.${qs.toFixed(5)}&lat=lte.${qn.toFixed(5)}&lon=gte.${qw.toFixed(5)}&lon=lte.${qe.toFixed(5)}&limit=2000`
+      );
+      for (const shop of supaShops) {
+        placeMarker(shop.id, shop.lat, shop.lon, shop.name || 'Unnamed chip shop', shop.address || 'Address unknown', false);
+      }
+      applyFilters();
+    } catch (err) { console.error('Supabase shops fetch failed:', err); }
+
+    // Step 2: background — Overpass supplement for any shops not yet in Supabase
     inflight = true;
     loading.classList.add('visible');
     try {
-      const res  = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+      const bbox  = `${qs.toFixed(5)},${qw.toFixed(5)},${qn.toFixed(5)},${qe.toFixed(5)}`;
+      const query = `[out:json][timeout:25];(node["cuisine"="fish_and_chips"](${bbox});way["cuisine"="fish_and_chips"](${bbox});relation["cuisine"="fish_and_chips"](${bbox}););out center tags;`;
+      const res   = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      fetchedBboxes.push({ s: qs, w: qw, n: qn, e: qe });
+      const json  = await res.json();
+      const newShops = [];
       for (const el of json.elements) {
         const id  = String(el.id);
         const lat = el.lat ?? el.center?.lat;
         const lon = el.lon ?? el.center?.lon;
         if (lat == null || lon == null) continue;
+        const isNew = !markers[id];
         addOrUpdateMarker(id, lat, lon, el.tags || {});
+        if (isNew) newShops.push({ id, name: shopData[id].name, address: shopData[id].address, lat, lon, last_seen: new Date().toISOString() });
+      }
+      // Save any newly discovered shops to Supabase for next time
+      if (newShops.length > 0) {
+        sbFetch('shops', {
+          method: 'POST',
+          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(newShops),
+        }).catch(err => console.error('Shop cache save failed:', err));
       }
     } catch (err) { console.error('Overpass error:', err); }
     finally { inflight = false; loading.classList.remove('visible'); applyFilters(); }
