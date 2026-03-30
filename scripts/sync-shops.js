@@ -39,6 +39,7 @@ async function main() {
   const data = await res.json();
   console.log(`Found ${data.elements.length} elements from Overpass`);
 
+  const now = new Date().toISOString();
   const shops = [];
 
   for (const el of data.elements) {
@@ -48,7 +49,7 @@ async function main() {
     const tags    = el.tags || {};
     const address = buildAddress(tags);
     const name    = tags.name || (address !== 'Address unknown' ? `Fish & chip shop, ${address}` : 'Unnamed chip shop');
-    shops.push({ id: String(el.id), name, address, lat, lon });
+    shops.push({ id: String(el.id), name, address, lat, lon, last_seen: now });
   }
 
   console.log(`Upserting ${shops.length} shops to Supabase...`);
