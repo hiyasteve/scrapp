@@ -27,6 +27,9 @@
       flex-direction: column;
       z-index: 200;
       overflow-y: auto;
+      color-scheme: light;
+      color: #555;
+      text-transform: lowercase;
     }
 
     /* ── Mobile hamburger + collapsible sidebar ─────────────────────────────── */
@@ -111,7 +114,7 @@
 
     .sidebar-title p {
       font-size: 0.8rem;
-      color: #666;
+      color: #555;
       margin-top: 4px;
       line-height: 1.5;
     }
@@ -224,7 +227,7 @@
       align-items: center;
       gap: 8px;
       font-size: 0.8rem;
-      color: #666;
+      color: #555;
       cursor: pointer;
       padding: 4px 6px;
       border-radius: 4px;
@@ -585,10 +588,10 @@
 
     <div class="sidebar-title">
       <div class="sidebar-title-row">
-        <h1>🐟 scrapp</h1>
+        <h1>🐟 Scrapp</h1>
         <button id="sidebar-close" aria-label="Close menu">✕</button>
       </div>
-      <p>scrapp is a community map of places where you can buy scraps ("pieces of deep-fried batter left over in the fryer as a by-product of frying, served as an accompaniment to chips").<br><br>please contribute to this important citizen science project by marking whether your local chippies (or the chippies you visit on your travels) sell scraps.</p>
+      <p>Scrapp is a community map of places where you can buy scraps ("pieces of deep-fried batter left over in the fryer as a by-product of frying, served as an accompaniment to chips").<br><br>Please contribute to this important citizen science project by marking whether your local chippies (or the chippies you visit on your travels) sell scraps.</p>
     </div>
 
     <div class="sidebar-divider"></div>
@@ -609,14 +612,14 @@
     <div>
       <div class="sidebar-label">missing a shop?</div>
       <button id="add-shop-btn">+ add missing shop</button>
-      <p style="font-size:0.8rem;color:#888;line-height:1.5;margin-top:6px;">if we're missing a chippy and you can't be bothered to find it yourself, just send me over the details to stephen.b.carlton@gmail.com</p>
+      <p style="font-size:0.8rem;color:#555;line-height:1.5;margin-top:6px;">if we're missing a chippy and you can't be bothered to find it yourself, just send me over the details to stephen.b.carlton@gmail.com</p>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <details class="about-section" open>
       <summary><span class="sidebar-label" style="margin-bottom:0">about</span><span class="about-toggle"></span></summary>
-      <p style="font-size:0.8rem;color:#666;line-height:1.6;margin-top:10px;">hello! i love scraps but it can be difficult to find chippies that sell them. that's why i've made scrapp, to document where scraps are available. it's possible that this site won't work very well because i'm not good at this. if you absolutely love it, send me an email about it.</p>
+      <p style="font-size:0.8rem;color:#555;line-height:1.6;margin-top:10px;">Hello! I love scraps but it can be difficult to find chippies that sell them. That's why I've made Scrapp, to document where scraps are available. It's possible that this site won't work very well because I'm not good at this. If you absolutely love it, send me an email about it.</p>
     </details>
 
     <div class="sidebar-divider"></div>
@@ -648,22 +651,22 @@
 <!-- ── Add shop modal ───────────────────────────────────────────────────────── -->
 <div id="modal-overlay">
   <div id="modal">
-    <h2>add a missing shop</h2>
-    <p class="modal-sub">search by name, then narrow by town or postcode if needed.</p>
+    <h2>Add a missing shop</h2>
+    <p class="modal-sub">Search by name, then narrow by town or postcode if needed.</p>
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">
-      <input id="modal-search-input" type="text" placeholder="shop name, e.g. the dolphin" autocomplete="off" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;width:100%;" />
-      <input id="modal-location-input" type="text" placeholder="town or postcode (optional)" autocomplete="off" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;width:100%;" />
-      <button id="modal-search-btn" style="background:#fff;border:1px solid #fff;border-radius:4px;color:#000;padding:7px 12px;font-size:0.85rem;font-weight:700;cursor:pointer;">search</button>
+      <input id="modal-search-input" type="text" placeholder="Shop name, e.g. The Dolphin" autocomplete="off" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;width:100%;" />
+      <input id="modal-location-input" type="text" placeholder="Town or postcode (optional)" autocomplete="off" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#fff;padding:7px 10px;font-size:0.85rem;outline:none;width:100%;" />
+      <button id="modal-search-btn" style="background:#fff;border:1px solid #fff;border-radius:4px;color:#000;padding:7px 12px;font-size:0.85rem;font-weight:700;cursor:pointer;">Search</button>
     </div>
     <div id="modal-results"></div>
     <div id="modal-manual" style="display:none;margin-bottom:10px;">
-      <div style="font-size:0.75rem;color:#888;margin-bottom:6px;">can't find it? add by address instead:</div>
+      <div style="font-size:0.75rem;color:#888;margin-bottom:6px;">Can't find it? Add by address instead:</div>
       <input id="modal-manual-name" type="text" placeholder="Shop name" autocomplete="off" style="margin-bottom:6px;" />
       <input id="modal-manual-address" type="text" placeholder="Full address inc. postcode" autocomplete="off" style="margin-bottom:6px;" />
       <button id="modal-manual-btn" style="width:100%;background:#000;border:1px solid #000;border-radius:4px;color:#fff;padding:7px 12px;font-size:0.85rem;font-weight:700;cursor:pointer;">Add this shop</button>
     </div>
     <div id="modal-error"></div>
-    <button id="modal-cancel">cancel</button>
+    <button id="modal-cancel">Cancel</button>
   </div>
 </div>
 
