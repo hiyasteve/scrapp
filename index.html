@@ -593,8 +593,7 @@
         <h1>🐟 Scrapp</h1>
         <button id="sidebar-close" aria-label="Close menu">✕</button>
       </div>
-      <p>Scrapp is a community map of places where you can buy scraps ("pieces of deep-fried batter left over in the fryer as a by-product of frying, served as an accompaniment to chips").<br><br>Please contribute to this important citizen science project by marking whether your local chippies (or the chippies you visit on your travels) sell scraps.
-      <br><br>it's very simple (i think). just zoom in on the map to find a chippy, then mark it as a shop that "serves scraps" or one that has "no scraps". eventually we'll end up with a map that shows scraps hot spots and scraps deserts (it feels like manchester is the latter).</p>
+      <p>Scrapp is a community map of places where you can buy scraps ("pieces of deep-fried batter left over in the fryer as a by-product of frying, served as an accompaniment to chips").<br><br>Please contribute to this important citizen science project by marking whether your local chippies (or the chippies you visit on your travels) sell scraps.</p>
     </div>
 
     <div class="sidebar-divider"></div>
@@ -1023,6 +1022,13 @@
 
   function applyFilters() {
     const lowZoom = map.getZoom() < LOW_ZOOM;
+    const midZoom = map.getZoom() < MID_ZOOM;
+
+    // Location marker: hide below zoom 12
+    if (locationMarker) {
+      if (midZoom && map.hasLayer(locationMarker)) map.removeLayer(locationMarker);
+      if (!midZoom && !map.hasLayer(locationMarker)) locationMarker.addTo(map);
+    }
 
     // Regular markers: hide at low zoom, filter-aware at normal zoom
     for (const [id, marker] of Object.entries(markers)) {
@@ -1030,7 +1036,7 @@
         if (map.hasLayer(marker)) map.removeLayer(marker);
       } else {
         const key = markerFilterKey(id);
-        const hiddenByZoom = map.getZoom() < MID_ZOOM && key === 'unconfirmed';
+        const hiddenByZoom = midZoom && key === 'unconfirmed';
         const visible = activeFilters.has(key) && !hiddenByZoom;
         if (visible  && !map.hasLayer(marker)) marker.addTo(map);
         if (!visible &&  map.hasLayer(marker)) map.removeLayer(marker);
