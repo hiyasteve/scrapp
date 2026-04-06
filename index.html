@@ -601,7 +601,14 @@
         <h1>🐟 Scrapp</h1>
         <button id="sidebar-close" aria-label="Close menu">✕</button>
       </div>
-      <p>Scrapp is a community map of places where you can buy scraps ("pieces of deep-fried batter left over in the fryer as a by-product of frying, served as an accompaniment to chips"). They're called "bits" in yorkshire. the <a href="https://en.wikipedia.org/wiki/Scraps_(batter)" target="_blank" style="color:#555;">wikipedia page</a> reckons they're called "gribbles" in the west country, but i'm not having that.<br><br>Please contribute to this important citizen science project by marking whether your local chippies (or the chippies you visit on your travels) sell scraps. It's just as important to mark the shops that don't sell scraps!</p>
+      <p>Scrapp is a community map of places where you can buy scraps ("pieces of deep-fried batter left over in the fryer as a by-product of frying, served as an accompaniment to chips"). They're called "bits" in yorkshire. the <a href="https://en.wikipedia.org/wiki/Scraps_(batter)" target="_blank" style="color:#555;">wikipedia page</a> reckons they're called "gribbles" in the west country, but i'm not having that.<br><br>Please contribute to this important citizen science project by marking whether your local chippies (or the chippies you visit on your travels) sell scraps.</p>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div>
+      <div class="sidebar-label">scrapp just added</div>
+      <div id="latest-scrapp-wrap" style="font-size:0.8rem;color:#555;line-height:1.6;min-height:1.2em;"></div>
     </div>
 
     <div class="sidebar-divider"></div>
@@ -732,6 +739,45 @@
   }
 
   let scrapsData = {}, customShops = {};
+
+  function extractCity(address) {
+    if (!address || address === 'Address unknown') return null;
+    const parts = address.split(', ');
+    const postcodeRe = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i;
+    const filtered = parts.filter(p => !postcodeRe.test(p.trim()));
+    return filtered[filtered.length - 1] || null;
+  }
+
+  async function loadLatestScrapp() {
+    try {
+      const results = await sbFetch('votes?select=*&order=updated_at.desc&limit=1');
+      const latest = results?.[0];
+      const wrap = document.getElementById('latest-scrapp-wrap');
+      if (!latest || !wrap) return;
+      const city = extractCity(latest.address);
+      const label = latest.status === 'yes' ? 'serves scraps' : 'no scraps';
+      const namePart = latest.name || 'unknown shop';
+      const locPart = city ? `, ${city}` : '';
+      if (latest.lat && latest.lon) {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.style.cssText = 'color:#555;text-decoration:underline;text-decoration-color:#ccc;';
+        a.textContent = `${namePart}${locPart}`;
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          map.setView([latest.lat, latest.lon], 16);
+          if (window.innerWidth <= 640) closeSidebar();
+          setTimeout(() => { const m = markers[latest.shop_id]; if (m) m.openPopup(); }, 350);
+        });
+        wrap.appendChild(a);
+        wrap.appendChild(document.createTextNode(` (${label})`));
+      } else {
+        wrap.textContent = `${namePart}${locPart} (${label})`;
+      }
+    } catch (err) {
+      console.warn('Could not load latest scrapp:', err);
+    }
+  }
 
   async function loadData() {
     const [votes, shops] = await Promise.all([
@@ -1004,6 +1050,7 @@
   loadData()
     .catch(err => console.error('Failed to load Supabase data:', err))
     .finally(() => { restoreConfirmedShops(); restoreCustomShops(); fetchShops(); });
+  loadLatestScrapp();
 
   // ── Filters ──────────────────────────────────────────────────────────────────
   const activeFilters = new Set(['yes', 'no', 'unconfirmed']);
