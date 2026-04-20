@@ -33,6 +33,7 @@ async function main() {
   console.log('Querying Overpass API for UK fish & chip shops...');
   const res = await fetch(OVERPASS_URL, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'data=' + encodeURIComponent(QUERY),
   });
   if (!res.ok) throw new Error(`Overpass error: ${res.status} ${res.statusText}`);
