@@ -3,7 +3,7 @@
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_URL = 'https://overpass.kumi.systems/api/interpreter';
 
 // Bounding box covering the UK (and a little beyond — harmless)
 const QUERY = `[out:json][timeout:120];
@@ -33,7 +33,11 @@ async function main() {
   console.log('Querying Overpass API for UK fish & chip shops...');
   const res = await fetch(OVERPASS_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'scrapp-sync/1.0 (https://github.com/scrapp)',
+      'Accept': 'application/json',
+    },
     body: 'data=' + encodeURIComponent(QUERY),
   });
   if (!res.ok) throw new Error(`Overpass error: ${res.status} ${res.statusText}`);
