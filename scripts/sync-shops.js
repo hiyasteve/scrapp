@@ -3,7 +3,10 @@
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const OVERPASS_URL = 'https://overpass.kumi.systems/api/interpreter';
+const OVERPASS_URLS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+];
 
 // Bounding box covering the UK (and a little beyond — harmless)
 const QUERY = `[out:json][timeout:120];
@@ -25,26 +28,33 @@ function buildAddress(tags) {
   return parts.join(', ') || 'Address unknown';
 }
 
-async function fetchOverpass(retries = 3, delayMs = 15000) {
+async function fetchOverpass(retries = 4, delayMs = 15000) {
+  let lastErr;
   for (let attempt = 1; attempt <= retries; attempt++) {
-    const res = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'scrapp-sync/1.0 (https://github.com/scrapp)',
-        'Accept': 'application/json',
-      },
-      body: 'data=' + encodeURIComponent(QUERY),
-    });
-    if (res.ok) return res;
-    const retryable = res.status === 504 || res.status === 503 || res.status === 429;
-    if (!retryable || attempt === retries) {
-      throw new Error(`Overpass error: ${res.status} ${res.statusText}`);
+    const url = OVERPASS_URLS[(attempt - 1) % OVERPASS_URLS.length];
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'scrapp-sync/1.0 (https://github.com/scrapp)',
+          'Accept': 'application/json',
+        },
+        body: 'data=' + encodeURIComponent(QUERY),
+      });
+      if (res.ok) return res;
+      const retryable = res.status === 504 || res.status === 503 || res.status === 429;
+      if (!retryable || attempt === retries) throw new Error(`Overpass error: ${res.status} ${res.statusText}`);
+      lastErr = new Error(`Overpass error: ${res.status} ${res.statusText}`);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      lastErr = err;
     }
-    console.log(`Overpass returned ${res.status} — retrying in ${delayMs / 1000}s (attempt ${attempt}/${retries})...`);
+    console.log(`Attempt ${attempt} failed (${lastErr.message}) — retrying in ${delayMs / 1000}s via ${OVERPASS_URLS[attempt % OVERPASS_URLS.length]}...`);
     await new Promise(r => setTimeout(r, delayMs));
-    delayMs *= 2; // exponential backoff
+    delayMs *= 2;
   }
+  throw lastErr;
 }
 
 async function main() {
