@@ -25,22 +25,35 @@ function buildAddress(tags) {
   return parts.join(', ') || 'Address unknown';
 }
 
+async function fetchOverpass(retries = 3, delayMs = 15000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const res = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'scrapp-sync/1.0 (https://github.com/scrapp)',
+        'Accept': 'application/json',
+      },
+      body: 'data=' + encodeURIComponent(QUERY),
+    });
+    if (res.ok) return res;
+    const retryable = res.status === 504 || res.status === 503 || res.status === 429;
+    if (!retryable || attempt === retries) {
+      throw new Error(`Overpass error: ${res.status} ${res.statusText}`);
+    }
+    console.log(`Overpass returned ${res.status} — retrying in ${delayMs / 1000}s (attempt ${attempt}/${retries})...`);
+    await new Promise(r => setTimeout(r, delayMs));
+    delayMs *= 2; // exponential backoff
+  }
+}
+
 async function main() {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY environment variables');
   }
 
   console.log('Querying Overpass API for UK fish & chip shops...');
-  const res = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'scrapp-sync/1.0 (https://github.com/scrapp)',
-      'Accept': 'application/json',
-    },
-    body: 'data=' + encodeURIComponent(QUERY),
-  });
-  if (!res.ok) throw new Error(`Overpass error: ${res.status} ${res.statusText}`);
+  const res = await fetchOverpass();
   const data = await res.json();
   console.log(`Found ${data.elements.length} elements from Overpass`);
 
