@@ -601,6 +601,13 @@
     <div class="sidebar-divider"></div>
 
     <div>
+      <div class="sidebar-label">number of shops scrapped</div>
+      <div id="scrapped-count-wrap" style="font-size:0.8rem;color:#555;line-height:1.6;"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div>
       <div class="sidebar-label">zoom to a plaice</div>
       <div id="search-wrap">
         <div id="search-row">
@@ -790,6 +797,12 @@
     }
   }
 
+  function updateScrappedCount() {
+    const wrap = document.getElementById('scrapped-count-wrap');
+    if (!wrap) return;
+    wrap.textContent = Object.keys(scrapsData).length.toLocaleString();
+  }
+
   function scrapsStatus(id) {
     const d = scrapsData[id];
     if (!d) return null;
@@ -883,6 +896,7 @@
       markers[id].setPopupContent(buildPopup(id));
       applyFilters();
     }
+    updateScrappedCount();
     try {
       if (wasActive) {
         await sbFetch(`votes?shop_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -1030,7 +1044,7 @@
   // ── Initialise: load Supabase data, then place markers and fetch OSM ─────────
   loadData()
     .catch(err => console.error('Failed to load Supabase data:', err))
-    .finally(() => { restoreConfirmedShops(); restoreCustomShops(); fetchShops(); });
+    .finally(() => { restoreConfirmedShops(); restoreCustomShops(); fetchShops(); updateScrappedCount(); });
   loadLatestScrapp();
 
   // ── Filters ──────────────────────────────────────────────────────────────────
