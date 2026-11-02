@@ -608,6 +608,13 @@
     <div class="sidebar-divider"></div>
 
     <div>
+      <div class="sidebar-label">scrapital city</div>
+      <div id="scrapital-wrap" style="font-size:0.8rem;color:#555;line-height:1.6;min-height:1.2em;"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div>
       <div class="sidebar-label">zoom to a plaice</div>
       <div id="search-wrap">
         <div id="search-row">
@@ -726,6 +733,17 @@
     return res.status === 204 ? null : res.json();
   }
 
+  // Supabase caps each request at 1000 rows, so page through larger tables
+  async function sbFetchAll(path, order) {
+    const PAGE = 1000;
+    const rows = [];
+    for (let offset = 0; ; offset += PAGE) {
+      const page = await sbFetch(`${path}&order=${order}&limit=${PAGE}&offset=${offset}`);
+      rows.push(...page);
+      if (page.length < PAGE) return rows;
+    }
+  }
+
   let scrapsData = {}, customShops = {};
 
   function extractCity(address) {
@@ -769,8 +787,8 @@
 
   async function loadData() {
     const [votes, shops] = await Promise.all([
-      sbFetch('votes?select=*'),
-      sbFetch('custom_shops?select=*'),
+      sbFetchAll('votes?select=*', 'shop_id'),
+      sbFetchAll('custom_shops?select=*', 'id'),
     ]);
     for (const v of votes) {
       scrapsData[v.shop_id] = { v: v.status, t: new Date(v.updated_at).getTime(), lat: v.lat, lon: v.lon, name: v.name, address: v.address };
@@ -801,6 +819,75 @@
     const wrap = document.getElementById('scrapped-count-wrap');
     if (!wrap) return;
     wrap.textContent = Object.keys(scrapsData).length.toLocaleString();
+  }
+
+  // ── Scrapital city: the town centre with most scraps shops within 5 miles ────
+  const SCRAPITAL_RADIUS_MILES = 5;
+  let townsPromise = null;
+
+  function milesBetween(lat1, lon1, lat2, lon2) {
+    const R = 3958.8, toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  async function findScrapital() {
+    townsPromise = townsPromise || fetch('towns.json').then(r => {
+      if (!r.ok) throw new Error(`towns.json ${r.status}`);
+      return r.json();
+    });
+    const towns = await townsPromise;
+
+    const yes = [];
+    for (const [id, d] of Object.entries(scrapsData)) {
+      if (d?.v !== 'yes') continue;
+      const lat = d.lat ?? coordsCache[id]?.lat;
+      const lon = d.lon ?? coordsCache[id]?.lon;
+      if (lat && lon) yes.push({ lat, lon });
+    }
+
+    const latPad = SCRAPITAL_RADIUS_MILES / 69;  // ~69 miles per degree of latitude
+    let best = null;
+    for (const t of towns) {
+      const lonPad = latPad / Math.cos(t.lat * Math.PI / 180);
+      let count = 0, totalMiles = 0;
+      for (const s of yes) {
+        if (Math.abs(s.lat - t.lat) > latPad || Math.abs(s.lon - t.lon) > lonPad) continue;
+        const miles = milesBetween(t.lat, t.lon, s.lat, s.lon);
+        if (miles <= SCRAPITAL_RADIUS_MILES) { count++; totalMiles += miles; }
+      }
+      // Ties go to the town whose scraps shops are closest to its centre
+      if (count && (!best || count > best.count || (count === best.count && totalMiles < best.totalMiles))) {
+        best = { ...t, count, totalMiles };
+      }
+    }
+    return best;
+  }
+
+  async function updateScrapital() {
+    const wrap = document.getElementById('scrapital-wrap');
+    if (!wrap) return;
+    try {
+      const best = await findScrapital();
+      wrap.textContent = '';
+      if (!best) { wrap.textContent = 'none yet'; return; }
+      const a = document.createElement('a');
+      a.href = '#';
+      a.style.cssText = 'color:#555;text-decoration:underline;text-decoration-color:#ccc;';
+      a.textContent = best.n;
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        map.setView([best.lat, best.lon], 12);
+        if (window.innerWidth <= 640) closeSidebar();
+      });
+      wrap.appendChild(a);
+      const shops = best.count === 1 ? 'shop' : 'shops';
+      wrap.appendChild(document.createTextNode(` (${best.count} scraps ${shops} within ${SCRAPITAL_RADIUS_MILES} miles)`));
+    } catch (err) {
+      console.warn('Could not work out scrapital city:', err);
+    }
   }
 
   function scrapsStatus(id) {
@@ -897,6 +984,7 @@
       applyFilters();
     }
     updateScrappedCount();
+    updateScrapital();
     try {
       if (wasActive) {
         await sbFetch(`votes?shop_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -916,6 +1004,7 @@
     delete shopData[id];
     delete scrapsData[id];
     if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
+    updateScrapital();
     try {
       await Promise.all([
         sbFetch(`custom_shops?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -1044,7 +1133,7 @@
   // ── Initialise: load Supabase data, then place markers and fetch OSM ─────────
   loadData()
     .catch(err => console.error('Failed to load Supabase data:', err))
-    .finally(() => { restoreConfirmedShops(); restoreCustomShops(); fetchShops(); updateScrappedCount(); });
+    .finally(() => { restoreConfirmedShops(); restoreCustomShops(); fetchShops(); updateScrappedCount(); updateScrapital(); });
   loadLatestScrapp();
 
   // ── Filters ──────────────────────────────────────────────────────────────────
